@@ -22,3 +22,6 @@ const userSchema = new mongoose.Schema(
 const User = mongoose.model("User", userSchema);
 
 export default User;
+
+// Event.js: revisar/corregir porque actualmente contiene el modelo User.
+// Falta especificacion de los campos de Event para corregirlo correctamente.

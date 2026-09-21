@@ -4,7 +4,7 @@ API REST desarrollada con Node.js y Express para la gestion de eventos y sesione
 
 ## Tematica
 
-La aplicacion esta orientada a una plataforma de eventos donde los usuarios podran consultar eventos y, en futuras etapas, gestionar sesiones, autenticacion y participacion en diferentes actividades.
+La aplicacion esta orientada a una plataforma de eventos donde los usuarios podran consultar eventos y gestionar sesiones, autenticacion y participacion en diferentes actividades.
 
 ## Tecnologias
 
@@ -14,6 +14,7 @@ La aplicacion esta orientada a una plataforma de eventos donde los usuarios podr
 * Mongoose
 * dotenv
 * JSON Web Token
+* bcrypt
 * JavaScript
 * ES Modules
 
@@ -23,10 +24,9 @@ El proyecto utiliza una arquitectura organizada por capas:
 
 ```text
 routes -> controllers -> services -> repositories -> dao -> models -> MongoDB
-
 ```
 
-En esta primera etapa se prepara la estructura base para futuras funcionalidades.
+Cada capa tiene una responsabilidad especifica dentro del procesamiento de las peticiones.
 
 ## Estructura del proyecto
 
@@ -36,6 +36,7 @@ proyecto-eventos/
 │   ├── app.js
 │   ├── server.js
 │   ├── config/
+│   │   └── database.js
 │   ├── routes/
 │   │   ├── events.router.js
 │   │   └── sessions.router.js
@@ -43,13 +44,17 @@ proyecto-eventos/
 │   │   ├── events.controller.js
 │   │   └── sessions.controller.js
 │   ├── services/
+│   │   └── sessions.service.js
 │   ├── repositories/
+│   │   └── users.repository.js
 │   ├── dao/
+│   │   └── users.dao.js
 │   ├── models/
 │   │   ├── User.js
 │   │   └── Event.js
 │   ├── middlewares/
 │   └── utils/
+│       └── hash.js
 ├── .env.example
 ├── .gitignore
 ├── package.json
@@ -160,33 +165,126 @@ Respuesta inicial:
 }
 ```
 
-La funcionalidad de autenticacion todavia no esta implementada.
+### Registro de usuarios
+
+```http
+POST /api/sessions/register
+```
+
+El endpoint permite registrar un nuevo usuario.
+
+Body:
+
+```json
+{
+  "first_name": "Ana",
+  "last_name": "Pérez",
+  "email": "ana@mail.com",
+  "password": "Secreta123"
+}
+```
+
+Durante el registro se realizan las siguientes validaciones:
+
+* Los campos `first_name`, `last_name`, `email` y `password` son obligatorios.
+* El email debe contener `@`.
+* La contraseña debe tener al menos 6 caracteres.
+* El email se almacena sin espacios al inicio o final y en minusculas.
+* No se permiten emails duplicados.
+* La contraseña se almacena utilizando un hash de bcrypt.
+* El campo `role` no puede ser definido mediante el registro publico.
+* El rol asignado por defecto es `user`.
+* La contraseña no se incluye en la respuesta.
+
+Respuesta exitosa:
+
+```json
+{
+  "status": "success",
+  "payload": {
+    "id": "6aaf63fb981299f8b14f9458",
+    "first_name": "Ana",
+    "last_name": "Pérez",
+    "email": "ana@mail.com",
+    "role": "user"
+  }
+}
+```
+
+Codigos de respuesta utilizados:
+
+* `201` — Usuario creado correctamente.
+* `400` — Datos de registro invalidos o campos obligatorios faltantes.
+* `409` — El email ya esta registrado.
 
 ## Modelos
 
-Actualmente se incluyen modelos base para:
+Actualmente se incluyen modelos para:
 
 * User
 * Event
 
+El modelo `User` contiene los siguientes campos:
+
+* `first_name`
+* `last_name`
+* `email`
+* `password`
+* `role`
+
+El campo `role` acepta los valores:
+
+```text
+user
+organizer
+admin
+```
+
+El valor por defecto es:
+
+```text
+user
+```
+
 Los modelos utilizan Mongoose y estan preparados para futuras etapas de desarrollo.
+
+## Seguridad
+
+Las contraseñas no se almacenan en texto plano.
+
+Antes de guardar un usuario, la contraseña se transforma mediante bcrypt utilizando el helper ubicado en:
+
+```text
+src/utils/hash.js
+```
+
+La contraseña, tanto en texto plano como en forma de hash, no se devuelve al cliente durante el registro.
 
 ## Estado del proyecto
 
-Esta entrega corresponde a la estructura inicial de la API REST.
+La API cuenta actualmente con:
+
+* Estructura base de la API REST.
+* Conexion con MongoDB mediante Mongoose.
+* Arquitectura por capas.
+* Registro de usuarios.
+* Validaciones basicas de registro.
+* Normalizacion de emails.
+* Deteccion de emails duplicados.
+* Hash de contraseñas mediante bcrypt.
+* Asignacion de rol por defecto.
+* Proteccion del campo `role` durante el registro.
 
 Las siguientes etapas podran incorporar:
 
-* Conexion con MongoDB
-* CRUD de eventos
-* Registro de usuarios
-* Login
-* Autenticacion mediante JWT
-* Middlewares de autenticacion
-* Gestion de sesiones
-* Validaciones
-* Manejo centralizado de errores
-* Repositories, services y DAO con logica real
+* CRUD de eventos.
+* Login.
+* Autenticacion mediante JWT.
+* Middlewares de autenticacion.
+* Gestion de sesiones.
+* Validaciones adicionales.
+* Manejo centralizado de errores.
+* Ampliacion de repositories, services y DAO.
 
 ## Licencia
 
