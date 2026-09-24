@@ -7,7 +7,7 @@ export const getSessions = (req, res) => {
   });
 };
 
-export const register = async (req, res) => {
+export const register = async (req, res, next) => {
   try {
         const user = await registerUser(req.body);
 
@@ -15,15 +15,7 @@ export const register = async (req, res) => {
       status: "success",
       payload: user
     });
-  } catch (error) {
-    
+  } catch (error) {    
     next(error);
-   
-    const status = error.status || 400;
-
-    res.status(status).json({
-      status: "error",
-      message: error.message
-    });
-  }
-};
+      }
+  };

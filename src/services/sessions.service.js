@@ -1,6 +1,12 @@
 import { getUserByEmail, saveUser } from "../repositories/users.repository.js";
 import { hashPassword } from "../utils/hash.js";
 
+const createError = (message, status) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
+
 export const registerUser = async ({
   first_name,
   last_name,
@@ -13,17 +19,17 @@ export const registerUser = async ({
     !email?.trim() ||
     !password?.trim()
   ) {
-    throw new Error("Faltan campos obligatorios", 400);
+    throw createError("Faltan campos obligatorios", 400);
   }
 
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail.includes("@")) {
-    throw new Error("Email inválido", 400);
+    throw createError("Email inválido", 400);
   }
 
   if (password.length < 6) {
-    throw new Error("La contraseña debe tener al menos 6 caracteres", 400);
+    throw createError("La contraseña debe tener al menos 6 caracteres", 400);
   }
 
   const existingUser = await getUserByEmail(normalizedEmail);
