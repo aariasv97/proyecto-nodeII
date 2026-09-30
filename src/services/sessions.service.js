@@ -1,5 +1,6 @@
 import { getUserByEmail, saveUser } from "../repositories/users.repository.js";
-import { hashPassword } from "../utils/hash.js";
+import { hashPassword, comparePassword } from "../utils/hash.js";
+import { signToken } from "../utils/jwt.js";
 
 const createError = (message, status) => {
   const error = new Error(message);
@@ -56,4 +57,32 @@ export const registerUser = async ({
     email: newUser.email,
     role: newUser.role
   };
+};
+
+export const loginUser = async ({ email, password }) => {
+  if (!email?.trim() || !password?.trim()) {
+    throw createError("Credenciales inválidas", 401);
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await getUserByEmail(normalizedEmail);
+
+  if (!user) {
+    throw createError("Credenciales inválidas", 401);
+  }
+
+  const validPassword = await comparePassword(password, user.password);
+
+  if (!validPassword) {
+    throw createError("Credenciales inválidas", 401);
+  }
+
+  const token = signToken({
+    id: user._id,
+    email: user.email,
+    role: user.role
+  });
+
+  return { token };
 };
