@@ -1,17 +1,29 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
+const eventSchema = new mongoose.Schema(
   {
-    name: {
+    title: {
       type: String,
       required: true,
       trim: true
     },
-    email: {
+    description: {
       type: String,
       required: true,
-      unique: true,
       trim: true
+    },
+    date: {
+      type: Date,
+      required: true
+    },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    published: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -19,9 +31,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-const User = mongoose.model("User", userSchema);
+const Event = mongoose.model("Event", eventSchema);
 
-export default User;
-
-// Event.js: revisar/corregir porque actualmente contiene el modelo User.
-// Falta especificacion de los campos de Event para corregirlo correctamente.
+export default Event;
