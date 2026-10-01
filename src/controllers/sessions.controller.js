@@ -1,4 +1,4 @@
-import { registerUser, loginUser } from "../services/sessions.service.js";
+import { signToken } from "../utils/jwt.js";
 
 export const getSessions = (req, res) => {
   res.status(200).json({
@@ -9,22 +9,34 @@ export const getSessions = (req, res) => {
 
 export const register = async (req, res, next) => {
   try {
-    const user = await registerUser(req.body);
+    const user = req.user;
 
     res.status(201).json({
       status: "success",
-      payload: user
+      payload: {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: user.role
+      }
     });
-  } catch (error) {    
+  } catch (error) {
     next(error);
   }
 };
 
 export const login = async (req, res, next) => {
   try {
-    const result = await loginUser(req.body);
+    const user = req.user;
 
-    res.cookie("currentUser", result.token, {
+    const token = signToken({
+      id: user._id,
+      email: user.email,
+      role: user.role
+    });
+
+    res.cookie("currentUser", token, {
       httpOnly: true,
       sameSite: "lax",
       maxAge: 3600000,

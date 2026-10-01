@@ -1,19 +1,35 @@
 import { Router } from "express";
-import { 
-    getSessions,
-    register,
-    login,
-    current,
-    logout
+import {
+  getSessions,
+  register,
+  login,
+  current,
+  logout
 } from "../controllers/sessions.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
+import passport from "../config/passport.config.js";
 
 const router = Router();
 
 router.get("/", getSessions);
-router.post("/register", register);
-router.post("/login", login);
-router.get("/current", authMiddleware, current);
+
+router.post(
+  "/register",
+  passport.authenticate("register", { session: false }),
+  register
+);
+
+router.post(
+  "/login",
+  passport.authenticate("login", { session: false }),
+  login
+);
+
+router.get(
+  "/current",
+  passport.authenticate("current", { session: false }),
+  current
+);
+
 router.post("/logout", logout);
 
 export default router;

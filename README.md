@@ -14,6 +14,9 @@ La aplicacion esta orientada a una plataforma de eventos donde los usuarios podr
 * Mongoose
 * dotenv
 * JSON Web Token
+* Passport.js
+* passport-local
+* passport-jwt
 * bcrypt
 * cookie-parser
 * JavaScript
@@ -26,10 +29,10 @@ El proyecto utiliza una arquitectura organizada por capas:
 ```text
 routes -> controllers -> services -> repositories -> dao -> models -> MongoDB
 ```
-La autenticacion utiliza ademas: 
+La autenticacion utiliza Passport.js con estrategias centralizadas:
 
 ```text
-routes -> auth.middleware -> JWT
+routes -> Passport strategies -> controllers
 ```
 
 Cada capa tiene una responsabilidad especifica dentro del procesamiento de las peticiones.
@@ -43,7 +46,8 @@ proyecto-eventos/
 │   ├── app.js
 │   ├── server.js
 │   ├── config/
-│   │   └── database.js
+│   │   ├── database.js
+│   │   └── passport.config.js
 │   ├── routes/
 │   │   ├── events.router.js
 │   │   └── sessions.router.js
@@ -51,7 +55,6 @@ proyecto-eventos/
 │   │   ├── events.controller.js
 │   │   └── sessions.controller.js
 │   ├── services/
-│   │   └── sessions.service.js
 │   ├── repositories/
 │   │   └── users.repository.js
 │   ├── dao/
@@ -60,7 +63,6 @@ proyecto-eventos/
 │   │   ├── User.js
 │   │   └── Event.js
 │   ├── middlewares/
-│   │   ├── auth.middleware.js
 │   │   └── error.middleware.js
 │   └── utils/
 │       ├── hash.js
@@ -277,9 +279,7 @@ Respuesta HTTP: 401 Unauthorized
 ```http
 GET /api/sessions/current
 ```
-
-Esta ruta requiere una cookie currentUser valida, el middleware de autenticacion verifica el JWT y almacena su contenido en req.user.
-
+Esta ruta requiere una cookie currentUser valida. La estrategia current de Passport verifica el JWT y obtiene el usuario autenticado, disponible mediante req.user.
 
 ```json
 {
@@ -367,10 +367,11 @@ El secreto y el tiempo de expiracion se obtienen desde variables de entorno:
 JWT_SECRET
 JWT_EXPIRES_IN
 ```
-El token se almacena en una cookie currentUser con la opcion httpOnly, el middleware de autenticacion se encuentra en:
+El token se almacena en una cookie currentUser con la opcion httpOnly.
+Las estrategias de Passport se encuentran centralizadas en:
 
 ```text
-src/middlewares/auth.middleware.js
+src/config/passport.config.js
 ```
 La contraseña nunca se incluye en el JWT ni en las respuestas de autenticacion. 
 
@@ -392,7 +393,7 @@ La API cuenta actualmente con:
 * Login de usuarios.
 * Autenticacion mediante JWT.
 * Persistencia del JWT mediante cookie `currentUser`.
-* Middleware de autenticacion.
+* AutenticacioSn mediante estrategias de Passport.
 * Consulta del usuario autenticado.
 * Logout.
 
