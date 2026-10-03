@@ -4,7 +4,7 @@ API REST desarrollada con Node.js y Express para la gestion de eventos y sesione
 
 ## Tematica
 
-La aplicacion esta orientada a una plataforma de eventos donde los usuarios pueden consultar eventos, autenticarse y gestionar eventos segun su rol.
+La aplicacion esta orientada a una plataforma de eventos donde los usuarios pueden consultar eventos y, segun su rol, crear y gestionar eventos.
 
 ## Tecnologias
 
@@ -46,7 +46,7 @@ Cada capa tiene una responsabilidad especifica dentro del procesamiento de las p
 
 ```text
 
-proyecto-eventos/
+proyecto-nodeII/
 ├── src/
 │   ├── app.js
 │   ├── server.js
@@ -60,15 +60,17 @@ proyecto-eventos/
 │   │   ├── events.controller.js
 │   │   └── sessions.controller.js
 │   ├── services/
+│   │   └── events.service.js
 │   ├── repositories/
+│   │   ├── events.repository.js
 │   │   └── users.repository.js
 │   ├── dao/
+│   │   ├── events.dao.js
 │   │   └── users.dao.js
 │   ├── models/
 │   │   ├── User.js
 │   │   └── Event.js
 │   ├── middlewares/
-│   │   ├── auth.middleware.js
 │   │   ├── authorize.middleware.js
 │   │   └── error.middleware.js
 │   └── utils/
@@ -92,7 +94,7 @@ git clone <URL_DEL_REPOSITORIO>
 Ingresar al proyecto:
 
 ```bash
-cd proyecto-eventos
+cd proyecto-nodeII
 ```
 
 Instalar las dependencias:
@@ -141,8 +143,18 @@ http://localhost:8080
 ## Autenticacion
 
 La autenticacion utiliza Passport.js y JWT.
+Passport centraliza las estrategias de autenticacion en:
 
-Al realizar login correctamente, se genera un JWT que se almacena en una cookie llamada:
+```text
+src/config/passport.config.js
+```
+Actualmente se utilizan las estrategias:
+
+* register
+* login
+* current
+
+El JWT generado durante el login se almacena en una cookie llamada:
 
 ```text
 currentUser
@@ -157,11 +169,9 @@ La cookie utiliza:
 
 El JWT contiene:
 
-```text
-id
-email
-role
-```
+* id
+* email
+* role
 
 El secreto y el tiempo de expiracion se obtienen desde:
 
@@ -169,6 +179,11 @@ El secreto y el tiempo de expiracion se obtienen desde:
 JWT_SECRET
 JWT_EXPIRES_IN
 ```
+Las rutas protegidas utilizan:
+
+passport.authenticate("current", { session: false })
+
+La opcion session: false mantiene la autenticacion basada en JWT sin utilizar sesiones de Passport.
 
 ## Rutas disponibles
 
@@ -317,8 +332,8 @@ Respuesta HTTP: 401 Unauthorized
 ```http
 GET /api/sessions/current
 ```
-Ruta protegida.
-El middleware authMiddleware valida el JWT almacenado en la cookie currentUser y coloca el usuario autenticado en:
+
+La ruta utiliza la estrategia current de Passport para validar el JWT almacenado en la cookie currentUser. 
 
 req.user
 Sin una sesion valida:
@@ -365,15 +380,12 @@ Respuesta:
 ## Roles y autorizacion
 El modelo User utiliza tres roles:
 
-```text
-user
-organizer
-admin
-```
+* user
+* organizer
+* admin
 
-El rol por defecto es:
+El rol por defecto es: user
 
-user
 El registro publico no permite definir el rol mediante el body.
 
 La autorizacion se realiza mediante el middleware reutilizable:
@@ -669,13 +681,186 @@ El modelo Event contiene:
 
 * title
 * description
+* category
 * date
-* owner
-* published
+* location
+* capacity
+* price
+* status
+* organizer
 * createdAt
 * updatedAt
 
-El campo owner referencia al modelo User.
+El campo organizer almacena el ObjectId del usuario organizador y referencia al modelo User.
+
+organizer -> User
+
+El usuario organizador se obtiene del usuario autenticado y no se recibe desde el body al crear el evento.
+
+## Estados de un evento
+Los eventos pueden tener unicamente los siguientes estados:
+
+* draft
+* published
+* cancelled
+* finished
+
+El estado inicial de un evento nuevo es: draft
+
+## Consultar eventos
+
+```http
+GET /api/events
+```
+La consulta es publica.
+
+Permite utilizar filtros:
+
+* status
+* category
+* location
+* dateFrom
+* dateTo
+
+Tambien permite paginacion:
+
+* page
+* limit
+
+Y ordenamiento: sort
+
+## Consultar evento por ID
+
+```http
+GET /api/events/:id
+```
+La consulta es publica.
+
+Si el evento no existe:
+
+```json
+{
+  "status": "error",
+  "message": "Evento no encontrado"
+}
+```
+Respuesta HTTP:
+
+404 Not Found
+
+## Crear evento
+
+```http
+POST /api/events
+```
+Requiere autenticacion.
+
+Disponible para:
+
+* organizer
+* admin
+Body:
+
+```json
+{
+  "title": "Workshop de Node.js",
+  "description": "Introducción al desarrollo backend",
+  "category": "workshop",
+  "date": "2026-11-15T18:00:00.000Z",
+  "location": "Bogotá",
+  "capacity": 30,
+  "price": 50000
+}
+```
+El organizer se obtiene automaticamente desde:
+
+* req.user._id
+
+El cliente no puede definir el organizador mediante el body.
+
+## Validaciones de creacion
+
+La capa de services valida:
+
+* La fecha no puede estar en el pasado.
+* La capacidad debe ser mayor que 0.
+* El precio no puede ser negativo.
+
+El modelo tambien valida:
+
+* Campos obligatorios.
+* Capacidad minima de 1.
+* Precio minimo de 0.
+* Estados permitidos.
+
+## Modificar evento
+
+```http
+PUT /api/events/:id
+```
+
+Requiere autenticacion.
+
+Disponible para:
+
+* organizer
+* admin
+
+Un organizer solamente puede modificar sus propios eventos.
+
+Un admin puede modificar eventos pertenecientes a otros organizadores.
+
+Un evento cancelado no puede modificarse.
+
+Tambien se validan:
+
+* Fecha no pasada.
+* Capacidad mayor que 0.
+* Precio mayor o igual que 0.
+
+## Cambiar estado del evento
+
+```http
+PATCH /api/events/:id/status
+```
+Requiere autenticacion.
+
+Disponible para:
+
+* organizer
+* admin
+
+Body:
+```json
+{
+  "status": "published"
+}
+```
+El usuario debe ser propietario del evento o tener rol admin.
+
+Un evento cancelado no puede cambiar nuevamente de estado.
+
+Para publicar un evento, su fecha debe ser posterior a la fecha actual.
+
+## Cancelacion
+Los eventos no se eliminan fisicamente de la base de datos.
+
+Para cancelar un evento se utiliza:
+
+```http
+PATCH /api/events/:id/status
+```
+Body:
+
+```json
+{
+  "status": "cancelled"
+}
+```
+Una vez cancelado, el evento permanece almacenado con:
+status: cancelled
+y no puede volver a modificarse ni cambiar de estado.
+
 
 ## Seguridad
 
@@ -683,17 +868,25 @@ Las contraseñas no se almacenan en texto plano.
 
 Antes de guardar un usuario, la contraseña se transforma mediante bcrypt utilizando:
 
+```http
 src/utils/hash.js
+```
 La creacion de tokens se encuentra centralizada en:
 
+```http
 src/utils/jwt.js
+```
 Las estrategias de Passport se encuentran en:
 
+```http
 src/config/passport.config.js
+```
 La autenticacion y autorizacion de rutas se separan mediante:
 
+```http
 src/middlewares/auth.middleware.js
 src/middlewares/authorize.middleware.js
+```
 La contraseña nunca se incluye en el JWT ni en las respuestas de autenticacion.
 
 ## Estado del proyecto
@@ -704,27 +897,32 @@ La API cuenta actualmente con:
 * Conexion con MongoDB mediante Mongoose.
 * Arquitectura por capas.
 * Registro de usuarios.
-* Validaciones basicas de registro.
+* Validaciones de registro.
 * Normalizacion de emails.
 * Deteccion de emails duplicados.
 * Hash de contraseñas mediante bcrypt.
-* Asignacion de rol por defecto.
-* Proteccion del campo role durante el registro.
-* Manejo centralizado de errores.
+* Asignacion de roles.
 * Login de usuarios.
+* Autenticacion mediante Passport.js.
 * Autenticacion mediante JWT.
 * Persistencia del JWT mediante cookie currentUser.
-* Middleware de autenticacion.
-* Middleware reutilizable de autorizacion por roles.
-* Consulta del usuario autenticado.
+* Estrategia current para obtener el usuario autenticado.
 * Logout.
-* Consulta de eventos publicados.
-* Creacion de eventos para organizer y admin.
+* Autorizacin mediante roles.
+* Creacion de eventos.
 * Control de propiedad de eventos.
-* Modificacion de eventos propios por organizer.
-* Modificacion de cualquier evento por admin.
-* Consulta de todos los usuarios exclusiva para admin.
-* Diferenciacion entre errores 401 Unauthorized y 403 Forbidden.
+* Modificacion de eventos propios por organizers.
+* Modificacion de eventos por admins.
+* Estados draft, published, cancelled y finished.
+* Validacion de fechas.
+* Validacion de capacidad.
+* Validacion de precios.
+* Cancelacion logica de eventos.
+* Filtros de eventos.
+* Paginacion.
+* Ordenamiento.
+* Manejo centralizado de errores.
+* Respuestas diferenciadas para errores 400, 401, 403 y 404
 
 ## Licencia
 
