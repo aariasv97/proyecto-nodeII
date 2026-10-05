@@ -37,7 +37,7 @@ routes -> Passport strategies -> controllers
 La autorizacion utiliza middlewares reutilizables:
 
 ```text
-routes -> authMiddleware -> authorize -> controllers
+routes -> Passport -> authorize -> controllers
 ```
 
 Cada capa tiene una responsabilidad especifica dentro del procesamiento de las peticiones.
@@ -55,21 +55,28 @@ proyecto-nodeII/
 │   │   └── passport.config.js
 │   ├── routes/
 │   │   ├── events.router.js
-│   │   └── sessions.router.js
+│   │   ├── sessions.router.js
+│   │   └── tickets.router.js
 │   ├── controllers/
 │   │   ├── events.controller.js
-│   │   └── sessions.controller.js
+│   │   ├── sessions.controller.js
+│   │   └── tickets.controller.js
 │   ├── services/
-│   │   └── events.service.js
+│   │   ├── events.service.js
+│   │   ├── tickets.service.js
+│   │   └── email.service.js
 │   ├── repositories/
 │   │   ├── events.repository.js
-│   │   └── users.repository.js
+│   │   ├── users.repository.js
+│   │   └── tickets.repository.js
 │   ├── dao/
 │   │   ├── events.dao.js
-│   │   └── users.dao.js
+│   │   ├── users.dao.js
+│   │   └── tickets.dao.js
 │   ├── models/
 │   │   ├── User.js
-│   │   └── Event.js
+│   │   ├── Event.js
+│   │   └── Ticket.js
 │   ├── middlewares/
 │   │   ├── authorize.middleware.js
 │   │   └── error.middleware.js
@@ -115,7 +122,13 @@ NODE_ENV=development
 MONGO_URL=mongodb://localhost:27017/proyecto-eventos
 JWT_SECRET=change_this_secret
 JWT_EXPIRES_IN=1h
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USER=tu_usuario
+MAIL_PASS=tu_password
+MAIL_FROM=no-reply@example.com
 ```
+Las variables MAIL_* se utilizan para enviar correos de confirmacion de inscripcion.
 
 Tambien se incluye un archivo `.env.example` como referencia.
 
@@ -664,6 +677,7 @@ El modelo User contiene:
 * email
 * password
 * role
+* Ticket
 
 El campo role acepta:
 
@@ -697,6 +711,25 @@ organizer -> User
 
 El usuario organizador se obtiene del usuario autenticado y no se recibe desde el body al crear el evento.
 
+## Ticket
+
+El modelo Ticket contiene:
+
+* user
+* event
+* status
+* quantity
+* reservationCode
+* cancelledAt
+* createdAt
+* updatedAt
+
+Los campos `user` y `event` utilizan referencias `ObjectId`:
+
+```text
+user -> User
+event -> Event
+```
 ## Estados de un evento
 Los eventos pueden tener unicamente los siguientes estados:
 
@@ -861,6 +894,47 @@ Una vez cancelado, el evento permanece almacenado con:
 status: cancelled
 y no puede volver a modificarse ni cambiar de estado.
 
+## Tickets e inscripciones
+
+Los usuarios autenticados pueden inscribirse en eventos publicados mediante:
+
+```http
+POST /api/events/:eid/tickets
+```
+```json
+{
+  "quantity": 1
+}
+```
+La inscripcion valida:
+
+* La cantidad debe ser un numero entero mayor que 0.
+* El evento debe existir.
+* El evento debe estar publicado.
+* El evento no puede estar cancelado.
+* El evento no puede haber finalizado.
+* El usuario no puede tener otra inscripcion activa para el mismo evento.
+* La cantidad solicitada no puede superar la capacidad disponible.
+* Al crear una inscripcion se genera un codigo unico de reserva.
+
+Respuesta exitosa:
+```json
+{
+  "status": "success",
+  "message": "Inscripción realizada correctamente",
+  "payload": {
+    "user": "...",
+    "event": "...",
+    "status": "confirmed",
+    "quantity": 1,
+    "reservationCode": "RES-..."
+  }
+}
+```
+La inscripcion genera ademas un correo electronico de confirmacion mediante Nodemailer.
+
+
+
 
 ## Seguridad
 
@@ -881,10 +955,16 @@ Las estrategias de Passport se encuentran en:
 ```http
 src/config/passport.config.js
 ```
-La autenticacion y autorizacion de rutas se separan mediante:
+
+La autenticacion de rutas se realiza mediante Passport.js:
 
 ```http
-src/middlewares/auth.middleware.js
+src/config/passport.config.js
+```
+
+La autorizacion por roles se realiza mediante:
+
+```http
 src/middlewares/authorize.middleware.js
 ```
 La contraseña nunca se incluye en el JWT ni en las respuestas de autenticacion.
@@ -908,7 +988,7 @@ La API cuenta actualmente con:
 * Persistencia del JWT mediante cookie currentUser.
 * Estrategia current para obtener el usuario autenticado.
 * Logout.
-* Autorizacin mediante roles.
+* Autorizacion mediante roles.
 * Creacion de eventos.
 * Control de propiedad de eventos.
 * Modificacion de eventos propios por organizers.
@@ -923,6 +1003,15 @@ La API cuenta actualmente con:
 * Ordenamiento.
 * Manejo centralizado de errores.
 * Respuestas diferenciadas para errores 400, 401, 403 y 404
+* Sistema de inscripciones a eventos.
+* Modelo Ticket con referencias a User y Event.
+* Control de cantidad y capacidad disponible.
+* Prevencion de inscripciones duplicadas activas.
+* Cancelacion de tickets.
+* Consulta de tickets propios.
+* Consulta de tickets por evento con autorizacion por rol y propiedad.
+* Generacion de codigos de reserva.
+* Envio de correos de confirmacion mediante Nodemailer.
 
 ## Licencia
 

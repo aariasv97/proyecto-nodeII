@@ -7,3 +7,7 @@ export const findUserByEmail = (email) => {
 export const createUser = (userData) => {
   return User.create(userData);
 };
+
+export const findUserById = (userId) => {
+  return User.findById(userId);
+};
