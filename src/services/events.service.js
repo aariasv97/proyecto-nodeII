@@ -1,10 +1,4 @@
-import {
-  saveEvent,
-  getAllEvents,
-  getTotalEvents,
-  getEventById,
-  updateEventById
-} from "../repositories/events.repository.js";
+import EventRepository from "../repositories/events.repository.js";
 
 const createError = (message, status) => {
   const error = new Error(message);
@@ -25,7 +19,7 @@ export const createEventService = async (eventData) => {
     throw createError("El precio no puede ser negativo", 400);
   }
 
-  return saveEvent(eventData);
+  return EventRepository.create(eventData);
 };
 
 export const getEventsService = async ({
@@ -56,12 +50,12 @@ export const getEventsService = async ({
   const skip = (pageNumber - 1) * limitNumber;
 
   const [data, total] = await Promise.all([
-    getAllEvents(filter, {
+    EventRepository.findAll(filter, {
       sort,
       skip,
       limit: limitNumber
     }),
-    getTotalEvents(filter)
+    EventRepository.count(filter)
   ]);
 
   return {
@@ -74,7 +68,7 @@ export const getEventsService = async ({
 };
 
 export const getEventByIdService = async (id) => {
-  const event = await getEventById(id);
+  const event = await EventRepository.findById(id);
 
   if (!event) {
     throw createError("Evento no encontrado", 404);
@@ -84,7 +78,7 @@ export const getEventByIdService = async (id) => {
 };
 
 export const updateEventService = async (id, user, eventData) => {
-  const event = await getEventById(id);
+  const event = await EventRepository.findById(id);
 
   if (!event) {
     throw createError("Evento no encontrado", 404);
@@ -113,11 +107,11 @@ export const updateEventService = async (id, user, eventData) => {
     throw createError("El precio no puede ser negativo", 400);
   }
 
-  return updateEventById(id, eventData);
+  return EventRepository.update(id, eventData);
 };
 
 export const updateEventStatusService = async (id, user, status) => {
-  const event = await getEventById(id);
+  const event = await EventRepository.findById(id);
 
   if (!event) {
     throw createError("Evento no encontrado", 404);
@@ -134,14 +128,12 @@ export const updateEventStatusService = async (id, user, status) => {
     throw createError("No tienes permiso para modificar este evento", 403);
   }
 
-  if (status === "published") {
-    if (new Date(event.date) <= new Date()) {
-      throw createError(
-        "No se puede publicar un evento cuya fecha ya pasó",
-        400
-      );
-    }
+  if (status === "published" && new Date(event.date) <= new Date()) {
+    throw createError(
+      "No se puede publicar un evento cuya fecha ya pasó",
+      400
+    );
   }
 
-  return updateEventById(id, { status });
+  return EventRepository.update(id, { status });
 };

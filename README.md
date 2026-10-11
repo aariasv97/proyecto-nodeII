@@ -29,6 +29,13 @@ El proyecto utiliza una arquitectura organizada por capas:
 ```text
 routes -> controllers -> services -> repositories -> dao -> models -> MongoDB
 ```
+
+Los DTOs se utilizan para definir los datos que la API devuelve al cliente.
+
+```text
+controllers -> DTOs -> respuestas HTTP
+```
+
 La autenticacion utiliza Passport.js con estrategias centralizadas:
 
 ```text
@@ -41,6 +48,15 @@ routes -> Passport -> authorize -> controllers
 ```
 
 Cada capa tiene una responsabilidad especifica dentro del procesamiento de las peticiones.
+
+* Routes: definen los endpoints y los middlewares que se ejecutan.
+* Controllers: reciben las peticiones HTTP y construyen las respuestas.
+* Services: contienen las reglas de negocio y las validaciones de la aplicación.
+* Repositories: ofrecen una interfaz para acceder a los datos sin acoplar los servicios al DAO.
+* DAO: realiza las operaciones de acceso a MongoDB mediante Mongoose.
+* Models: definen la estructura y las validaciones de los documentos.
+* DTOs: seleccionan y transforman los datos que se exponen en las respuestas.
+* Middlewares: gestionan la autenticación, la autorización y los errores.
 
 ## Estructura del proyecto
 
@@ -64,7 +80,8 @@ proyecto-nodeII/
 │   ├── services/
 │   │   ├── events.service.js
 │   │   ├── tickets.service.js
-│   │   └── email.service.js
+│   │   ├── email.service.js
+│   │   └── users.service.js
 │   ├── repositories/
 │   │   ├── events.repository.js
 │   │   ├── users.repository.js
@@ -73,13 +90,18 @@ proyecto-nodeII/
 │   │   ├── events.dao.js
 │   │   ├── users.dao.js
 │   │   └── tickets.dao.js
+│   ├── dtos/
+│   │   ├── user.dto.js
+│   │   ├── event.dto.js
+│   │   └── ticket.dto.js
 │   ├── models/
 │   │   ├── User.js
 │   │   ├── Event.js
 │   │   └── Ticket.js
 │   ├── middlewares/
 │   │   ├── authorize.middleware.js
-│   │   └── error.middleware.js
+│   │   ├── error.middleware.js
+│   │   └── auth.middleware.js
 │   └── utils/
 │       ├── hash.js
 │       └── jwt.js
@@ -192,11 +214,8 @@ El secreto y el tiempo de expiracion se obtienen desde:
 JWT_SECRET
 JWT_EXPIRES_IN
 ```
-Las rutas protegidas utilizan:
 
-passport.authenticate("current", { session: false })
-
-La opcion session: false mantiene la autenticacion basada en JWT sin utilizar sesiones de Passport.
+Las rutas protegidas utilizan los middlewares de autenticación correspondientes. La ruta /api/sessions/current utiliza authMiddleware para validar el JWT almacenado en la cookie currentUser.
 
 ## Rutas disponibles
 
@@ -345,35 +364,25 @@ Respuesta HTTP: 401 Unauthorized
 ```http
 GET /api/sessions/current
 ```
+La ruta utiliza authMiddleware para validar el JWT almacenado en la cookie currentUser.
+Si la autenticación es correcta, el usuario autenticado queda disponible en req.user.
+Sin una cookie válida, la API responde con 401 Unauthorized.
 
-La ruta utiliza la estrategia current de Passport para validar el JWT almacenado en la cookie currentUser. 
+Respuesta exitosa:
 
-req.user
-Sin una sesion valida:
-
-401 Unauthorized
-
-Respuesta:
-
-```json
-{
-  "status": "error",
-  "message": "No autenticado"
-}
-```
-
-Con una sesion valida:
 ```json
 {
   "status": "success",
   "payload": {
     "id": "6aaf63fb981299f8b14f9458",
+    "first_name": "Ana",
+    "last_name": "Pérez",
     "email": "ana@mail.com",
     "role": "user"
   }
 }
 ```
-Si no existe un token valido: 401 Unauthorized
+La respuesta utiliza toUserDTO, por lo que no incluye la contraseña ni su hash.
 
 ## Logout
 
@@ -629,8 +638,7 @@ Consultar eventos publicados
 ```http
 GET /api/events
 ```
-
-Devuelve unicamente los eventos cuyo campo published sea true.
+Devuelve únicamente los eventos cuyo campo status sea published.
 
 ## Crear evento
 
@@ -933,8 +941,19 @@ Respuesta exitosa:
 ```
 La inscripcion genera ademas un correo electronico de confirmacion mediante Nodemailer.
 
+### DTOs (Data Transfer Objects)
 
+Los DTOs definen qué información se devuelve al cliente mediante la API, evitando exponer directamente los documentos completos de MongoDB.
 
+Se encuentran en src/dtos/:
+
+* user.dto.js: transforma los datos del usuario y excluye la contraseña.
+* event.dto.js: define los campos públicos de los eventos.
+* ticket.dto.js: define los campos públicos de las inscripciones y transforma las referencias a usuarios y eventos.
+
+Los controladores utilizan estos DTOs para preparar las respuestas HTTP.
+
+Esta separación permite modificar la información que recibe el cliente sin tener que cambiar directamente los modelos de la base de datos.
 
 ## Seguridad
 
@@ -968,6 +987,30 @@ La autorizacion por roles se realiza mediante:
 src/middlewares/authorize.middleware.js
 ```
 La contraseña nunca se incluye en el JWT ni en las respuestas de autenticacion.
+
+### Manejo centralizado de errores
+
+La API utiliza src/middlewares/error.middleware.js para centralizar el tratamiento de errores.
+
+El middleware procesa errores de validación de Mongoose, identificadores inválidos y registros duplicados.
+
+Códigos principales:
+
+* 400 Bad Request: datos inválidos o errores de validación.
+* 401 Unauthorized: usuario no autenticado.
+* 403 Forbidden: usuario sin permisos suficientes.
+* 404 Not Found: recurso no encontrado, cuando corresponde.
+* 409 Conflict: registro duplicado.
+* 500 Internal Server Error: errores internos no clasificados.
+
+Las respuestas de error utilizan una estructura común:
+
+```json
+{
+  "status": "error",
+  "message": "Mensaje del error"
+}
+```
 
 ## Estado del proyecto
 
@@ -1012,6 +1055,10 @@ La API cuenta actualmente con:
 * Consulta de tickets por evento con autorizacion por rol y propiedad.
 * Generacion de codigos de reserva.
 * Envio de correos de confirmacion mediante Nodemailer.
+* Uso de DTOs para las respuestas de usuarios, eventos e inscripciones.
+* Servicio de usuarios para separar la consulta de usuarios del controlador.
+* Acceso a MongoDB organizado mediante DAO y repositorios.
+* Manejo centralizado de errores de la API.
 
 ## Licencia
 

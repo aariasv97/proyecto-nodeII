@@ -1,13 +1,21 @@
 import User from "../models/User.js";
 
-export const findUserByEmail = (email) => {
-  return User.findOne({ email });
-};
+class UserDAO {
+  findByEmail(email) {
+    return User.findOne({ email });
+  }
 
-export const createUser = (userData) => {
-  return User.create(userData);
-};
+  findById(userId) {
+    return User.findById(userId);
+  }
 
-export const findUserById = (userId) => {
-  return User.findById(userId);
-};
+  findAll() {
+    return User.find();
+  }
+
+  create(userData) {
+    return User.create(userData);
+  }
+}
+
+export default new UserDAO();

@@ -1,17 +1,21 @@
-import {
-  findUserByEmail,
-  createUser,
-  findUserById,
-} from "../dao/users.dao.js";
+import UserDAO from "../dao/users.dao.js";
 
-export const getUserByEmail = (email) => {
-  return findUserByEmail(email);
-};
+class UserRepository {
+  findByEmail(email) {
+    return UserDAO.findByEmail(email);
+  }
 
-export const saveUser = (userData) => {
-  return createUser(userData);
-};
+  findById(userId) {
+    return UserDAO.findById(userId);
+  }
 
-export const getUserById = (userId) => {
-  return findUserById(userId);
-};
+  findAll() {
+    return UserDAO.findAll();
+  }
+
+  create(userData) {
+    return UserDAO.create(userData);
+  }
+}
+
+export default new UserRepository();

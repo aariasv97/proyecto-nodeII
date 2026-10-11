@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import bcrypt from "bcrypt";
-import User from "../models/User.js";
+import UserRepository from "../repositories/users.repository.js";
 import { hashPassword } from "../utils/hash.js";
 
 const SECRET_KEY = process.env.JWT_SECRET;
@@ -41,7 +41,9 @@ passport.use(
           );
         }
 
-        const existingUser = await User.findOne({ email: normalizedEmail });
+        const existingUser = await UserRepository.findByEmail(
+          normalizedEmail
+        );
 
         if (existingUser) {
           return done(createError("El email ya está registrado", 409));
@@ -49,7 +51,7 @@ passport.use(
 
         const hashedPassword = await hashPassword(password);
 
-        const user = await User.create({
+        const user = await UserRepository.create({
           first_name: first_name.trim(),
           last_name: last_name.trim(),
           email: normalizedEmail,
@@ -75,7 +77,7 @@ passport.use(
       try {
         const normalizedEmail = email.trim().toLowerCase();
 
-        const user = await User.findOne({ email: normalizedEmail });
+        const user = await UserRepository.findByEmail(normalizedEmail);
 
         if (!user) {
           return done(createError("Credenciales inválidas", 401));
@@ -109,7 +111,7 @@ passport.use(
     },
     async (payload, done) => {
       try {
-        const user = await User.findById(payload.id);
+        const user = await UserRepository.findById(payload.id);
 
         if (!user) {
           return done(null, false);

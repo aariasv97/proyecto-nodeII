@@ -1,5 +1,6 @@
 import { signToken } from "../utils/jwt.js";
-import User from "../models/User.js";
+import { getAllUsersService } from "../services/users.service.js";
+import { toUserDTO } from "../dtos/user.dto.js";
 
 export const getSessions = (req, res) => {
   res.status(200).json({
@@ -14,13 +15,7 @@ export const register = async (req, res, next) => {
 
     res.status(201).json({
       status: "success",
-      payload: {
-        id: user._id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role
-      }
+      payload: toUserDTO(user)
     });
   } catch (error) {
     next(error);
@@ -32,7 +27,7 @@ export const login = async (req, res, next) => {
     const user = req.user;
 
     const token = signToken({
-      id: user._id,
+      id: user._id ?? user.id,
       email: user.email,
       role: user.role
     });
@@ -56,11 +51,7 @@ export const login = async (req, res, next) => {
 export const current = (req, res) => {
   res.status(200).json({
     status: "success",
-    payload: {
-      id: req.user.id,
-      email: req.user.email,
-      role: req.user.role
-    }
+    payload: toUserDTO(req.user)
   });
 };
 
@@ -75,11 +66,11 @@ export const logout = (req, res) => {
 
 export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await getAllUsersService();
 
     res.status(200).json({
       status: "success",
-      payload: users
+      payload: users.map(toUserDTO)
     });
   } catch (error) {
     next(error);

@@ -1,37 +1,33 @@
-import {
-  createTicket,
-  findTicketsByUser,
-  findTicketsByEvent,
-  findActiveTicketByUserAndEvent,
-  findActiveTicketsByEvent,
-  findTicketById,
-  cancelTicket,
-} from "../dao/tickets.dao.js";
+import TicketDAO from "../dao/tickets.dao.js";
 
-export const saveTicket = (ticketData) => {
-  return createTicket(ticketData);
-};
+class TicketRepository {
+  create(ticketData) {
+    return TicketDAO.create(ticketData);
+  }
 
-export const getTicketsByUser = (userId) => {
-  return findTicketsByUser(userId);
-};
+  findByUser(userId) {
+    return TicketDAO.findByUser(userId);
+  }
 
-export const getTicketsByEvent = (eventId) => {
-  return findTicketsByEvent(eventId);
-};
+  findByEvent(eventId) {
+    return TicketDAO.findByEvent(eventId);
+  }
 
-export const getActiveTicketByUserAndEvent = (userId, eventId) => {
-  return findActiveTicketByUserAndEvent(userId, eventId);
-};
+  findActiveByUserAndEvent(userId, eventId) {
+    return TicketDAO.findActiveByUserAndEvent(userId, eventId);
+  }
 
-export const getActiveTicketsByEvent = (eventId) => {
-  return findActiveTicketsByEvent(eventId);
-};
+  findActiveByEvent(eventId) {
+    return TicketDAO.findActiveByEvent(eventId);
+  }
 
-export const getTicketById = (ticketId) => {
-  return findTicketById(ticketId);
-};
+  findById(ticketId) {
+    return TicketDAO.findById(ticketId);
+  }
 
-export const cancelTicketById = (ticketId) => {
-  return cancelTicket(ticketId);
-};
+  cancel(ticketId) {
+    return TicketDAO.cancel(ticketId);
+  }
+}
+
+export default new TicketRepository();

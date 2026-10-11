@@ -1,19 +1,25 @@
-import {
-  createEvent,
-  findAllEvents,
-  countEvents,
-  findEventById,
-  updateEvent
-} from "../dao/events.dao.js";
+import EventDAO from "../dao/events.dao.js";
 
-export const saveEvent = (eventData) => createEvent(eventData);
+class EventRepository {
+  create(eventData) {
+    return EventDAO.create(eventData);
+  }
 
-export const getAllEvents = (filter, options) =>
-  findAllEvents(filter, options);
+  findAll(filter, options) {
+    return EventDAO.findAll(filter, options);
+  }
 
-export const getTotalEvents = (filter) => countEvents(filter);
+  count(filter) {
+    return EventDAO.count(filter);
+  }
 
-export const getEventById = (id) => findEventById(id);
+  findById(id) {
+    return EventDAO.findById(id);
+  }
 
-export const updateEventById = (id, eventData) =>
-  updateEvent(id, eventData);
+  update(id, eventData) {
+    return EventDAO.update(id, eventData);
+  }
+}
+
+export default new EventRepository();

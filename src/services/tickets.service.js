@@ -1,17 +1,7 @@
 import { sendTicketConfirmationEmail } from "./email.service.js";
-
-import {
-  saveTicket,
-  getTicketsByUser,
-  getTicketsByEvent,
-  getActiveTicketByUserAndEvent,
-  getActiveTicketsByEvent,
-  getTicketById,
-  cancelTicketById,
-} from "../repositories/tickets.repository.js";
-
-import { getEventById } from "../repositories/events.repository.js";
-import { getUserById } from "../repositories/users.repository.js";
+import TicketRepository from "../repositories/tickets.repository.js";
+import EventRepository from "../repositories/events.repository.js";
+import UserRepository from "../repositories/users.repository.js";
 
 const createError = (message, status) => {
   const error = new Error(message);
@@ -20,35 +10,29 @@ const createError = (message, status) => {
 };
 
 export const createTicket = async (userId, eventId, quantity) => {
-  // 1. Validar quantity
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw createError("La cantidad debe ser un número entero mayor a 0", 400);
   }
 
-  // 2. Buscar evento
-  const event = await getEventById(eventId);
+  const event = await EventRepository.findById(eventId);
 
   if (!event) {
     throw createError("Evento no encontrado", 404);
   }
 
- // 3. Validar que el evento no esté cancelado
   if (event.status === "cancelled") {
-  throw createError("El evento está cancelado", 400);
+    throw createError("El evento está cancelado", 400);
   }
 
-  // 4. Validar que el evento no haya finalizado
   if (new Date(event.date) <= new Date()) {
     throw createError("El evento ya ha finalizado", 400);
   }
 
-    // 5. Validar estado del evento
   if (event.status !== "published") {
     throw createError("El evento no está publicado", 400);
   }
 
-  // 6. Verificar inscripción activa duplicada
-  const existingTicket = await getActiveTicketByUserAndEvent(
+  const existingTicket = await TicketRepository.findActiveByUserAndEvent(
     userId,
     eventId
   );
@@ -60,59 +44,51 @@ export const createTicket = async (userId, eventId, quantity) => {
     );
   }
 
-  // 7. Obtener tickets activos del evento
-  const activeTickets = await getActiveTicketsByEvent(eventId);
+  const activeTickets = await TicketRepository.findActiveByEvent(eventId);
 
-  // 8. Calcular cupos ocupados
   const occupiedSeats = activeTickets.reduce(
     (total, ticket) => total + ticket.quantity,
     0
   );
 
-  // 9. Verificar capacidad
   if (occupiedSeats + quantity > event.capacity) {
     throw createError("No hay cupos suficientes para esta inscripción", 400);
   }
 
-  // 10. Buscar usuario
-  const user = await getUserById(userId);
+  const user = await UserRepository.findById(userId);
 
   if (!user) {
     throw createError("Usuario no encontrado", 404);
   }
 
-  // 11. Generar código de reserva
   const reservationCode = `RES-${Date.now()}-${Math.floor(
     Math.random() * 10000
   )}`;
 
-  // 12. Crear ticket
-  const ticket = await saveTicket({
+  const ticket = await TicketRepository.create({
     user: userId,
     event: eventId,
     status: "confirmed",
     quantity,
-    reservationCode,
+    reservationCode
   });
 
-  // 13. Enviar email de confirmación
   await sendTicketConfirmationEmail({
     email: user.email,
     reservationCode: ticket.reservationCode,
     eventTitle: event.title,
-    quantity: ticket.quantity,
+    quantity: ticket.quantity
   });
 
   return ticket;
 };
 
 export const getMyTickets = async (userId) => {
-  return getTicketsByUser(userId);
+  return TicketRepository.findByUser(userId);
 };
 
-
 export const getEventTickets = async (eventId, userId, userRole) => {
-  const event = await getEventById(eventId);
+  const event = await EventRepository.findById(eventId);
 
   if (!event) {
     throw createError("Evento no encontrado", 404);
@@ -134,11 +110,11 @@ export const getEventTickets = async (eventId, userId, userRole) => {
     }
   }
 
-  return getTicketsByEvent(eventId);
+  return TicketRepository.findByEvent(eventId);
 };
 
 export const cancelTicket = async (ticketId, userId, isAdmin) => {
-  const ticket = await getTicketById(ticketId);
+  const ticket = await TicketRepository.findById(ticketId);
 
   if (!ticket) {
     throw createError("Ticket no encontrado", 404);
@@ -152,5 +128,5 @@ export const cancelTicket = async (ticketId, userId, isAdmin) => {
     throw createError("El ticket ya está cancelado", 400);
   }
 
-  return cancelTicketById(ticketId);
+  return TicketRepository.cancel(ticketId);
 };

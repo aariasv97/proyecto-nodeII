@@ -1,19 +1,31 @@
 import Event from "../models/Event.js";
 
-export const createEvent = (eventData) => Event.create(eventData);
+class EventDAO {
+  create(eventData) {
+    return Event.create(eventData);
+  }
 
-export const findAllEvents = (filter, options) =>
-  Event.find(filter)
-    .sort(options.sort)
-    .skip(options.skip)
-    .limit(options.limit);
+  findAll(filter, options) {
+    return Event.find(filter)
+      .sort(options.sort)
+      .skip(options.skip)
+      .limit(options.limit);
+  }
 
-export const countEvents = (filter) => Event.countDocuments(filter);
+  count(filter) {
+    return Event.countDocuments(filter);
+  }
 
-export const findEventById = (id) => Event.findById(id);
+  findById(id) {
+    return Event.findById(id);
+  }
 
-export const updateEvent = (id, eventData) =>
-  Event.findByIdAndUpdate(id, eventData, {
-    new: true,
-    runValidators: true
-  });
+  update(id, eventData) {
+    return Event.findByIdAndUpdate(id, eventData, {
+      new: true,
+      runValidators: true
+    });
+  }
+}
+
+export default new EventDAO();
